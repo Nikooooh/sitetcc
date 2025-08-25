@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import jsPDF from "jspdf";
 
 export default function Dashboard() {
   const [accounts, setAccounts] = useState([]);
@@ -9,21 +10,25 @@ export default function Dashboard() {
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [filter, setFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("");
+  const [modalAccount, setModalAccount] = useState(null);
+
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-  // Dentro do seu Dashboard, acima do return ou junto dos outros hooks:
+
+  // Logout
   const logout = () => {
-    localStorage.removeItem("token"); // remove o token
-    navigate("/login"); // redireciona para a página de login
+    localStorage.removeItem("token");
+    navigate("/login");
   };
 
+  // Fetch accounts
   const fetchAccounts = async () => {
     try {
       const res = await axios.get(
         "https://backendtcc-production-b1b7.up.railway.app/api/accounts",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setAccounts(res.data);
       setFilteredAccounts(res.data);
@@ -33,7 +38,10 @@ export default function Dashboard() {
     }
   };
 
+  // Add account
   const addAccountInline = async () => {
+    if (!description || !amount || !dueDate)
+      return alert("Preencha todos os campos");
     try {
       await axios.post(
         "https://backendtcc-production-b1b7.up.railway.app/api/accounts",
@@ -50,6 +58,7 @@ export default function Dashboard() {
     }
   };
 
+  // Pay account
   const payAccount = async (id) => {
     try {
       const res = await axios.put(
@@ -57,29 +66,81 @@ export default function Dashboard() {
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       const updatedAccount = res.data.account;
       setAccounts((prev) =>
         prev.map((acc) => (acc.id === updatedAccount.id ? updatedAccount : acc))
       );
-
-      // Atualiza também o filtro
       setFilteredAccounts((prev) =>
         prev.map((acc) => (acc.id === updatedAccount.id ? updatedAccount : acc))
       );
+      setModalAccount(null);
     } catch (err) {
       console.error(err);
       alert("Erro ao marcar conta como paga");
     }
   };
 
+  // Filter accounts
   const handleFilter = (status) => {
     setFilter(status);
-    if (status === "all") setFilteredAccounts(accounts);
-    else
-      setFilteredAccounts(
-        accounts.filter((acc) => acc.translatedStatus === status)
+    let temp = [...accounts];
+    if (status !== "all")
+      temp = temp.filter((acc) => acc.translatedStatus === status);
+    if (searchTerm)
+      temp = temp.filter((acc) =>
+        acc.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
+    setFilteredAccounts(temp);
+  };
+
+  // Search
+  const handleSearch = (term) => {
+    setSearchTerm(term);
+    let temp = [...accounts];
+    if (filter !== "all")
+      temp = temp.filter((acc) => acc.translatedStatus === filter);
+    temp = temp.filter((acc) =>
+      acc.description.toLowerCase().includes(term.toLowerCase())
+    );
+    setFilteredAccounts(temp);
+  };
+
+  // Sort
+  const handleSort = (criteria) => {
+    setSortBy(criteria);
+    let temp = [...filteredAccounts];
+    if (criteria === "valor") temp.sort((a, b) => a.amount - b.amount);
+    else if (criteria === "vencimento")
+      temp.sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+    else if (criteria === "status")
+      temp.sort((a, b) => a.translatedStatus.localeCompare(b.translatedStatus));
+    setFilteredAccounts(temp);
+  };
+
+  // Generate PDF
+  const generatePDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("Resumo Financeiro", 14, 20);
+
+    const totalPagar = accounts
+      .filter((a) => a.translatedStatus === "A Pagar")
+      .reduce((sum, a) => sum + Number(a.amount), 0);
+    const totalPago = accounts
+      .filter((a) => a.translatedStatus === "Paga")
+      .reduce((sum, a) => sum + Number(a.amount), 0);
+    const totalVencido = accounts
+      .filter((a) => a.translatedStatus === "Vencida")
+      .reduce((sum, a) => sum + Number(a.amount), 0);
+    const totalGeral = accounts.reduce((sum, a) => sum + Number(a.amount), 0);
+
+    doc.setFontSize(14);
+    doc.text(`A Pagar: R$ ${totalPagar}`, 14, 40);
+    doc.text(`Pagas: R$ ${totalPago}`, 14, 50);
+    doc.text(`Vencidas: R$ ${totalVencido}`, 14, 60);
+    doc.text(`Total: R$ ${totalGeral}`, 14, 70);
+
+    doc.save("resumo_financeiro.pdf");
   };
 
   useEffect(() => {
@@ -88,6 +149,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Dashboard - Contas</h1>
         <button
@@ -98,49 +160,105 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Filtros */}
-      <div className="mb-6 flex gap-2">
+      {/* Botão gerar PDF */}
+      <div className="mb-4">
         <button
-          onClick={() => handleFilter("all")}
-          className={`px-4 py-2 rounded ${
-            filter === "all" ? "bg-blue-500 text-white" : "bg-gray-300"
-          }`}
+          onClick={generatePDF}
+          className="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600"
         >
-          Todas
-        </button>
-        <button
-          onClick={() => handleFilter("A Pagar")}
-          className={`px-4 py-2 rounded ${
-            filter === "A Pagar" ? "bg-blue-500 text-white" : "bg-gray-300"
-          }`}
-        >
-          A pagar
-        </button>
-        <button
-          onClick={() => handleFilter("Vencida")}
-          className={`px-4 py-2 rounded ${
-            filter === "Vencida" ? "bg-blue-500 text-white" : "bg-gray-300"
-          }`}
-        >
-          Vencidas
-        </button>
-        <button
-          onClick={() => handleFilter("Paga")}
-          className={`px-4 py-2 rounded ${
-            filter === "Paga" ? "bg-blue-500 text-white" : "bg-gray-300"
-          }`}
-        >
-          Pagas
+          Gerar PDF do Resumo
         </button>
       </div>
 
-      {/* Botão para ir para a tela separada */}
-      {/*<button
-        onClick={() => navigate("/add-account")}
-        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-6"
-      >
-        Adicionar nova conta (tela separada)
-      </button>*/}
+      {/* Resumo financeiro */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white p-4 rounded shadow text-center">
+          <h3 className="font-semibold">A Pagar</h3>
+          <p>
+            R${" "}
+            {accounts
+              .filter((a) => a.translatedStatus === "A Pagar")
+              .reduce((sum, a) => sum + Number(a.amount), 0)}
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded shadow text-center">
+          <h3 className="font-semibold">Pagas</h3>
+          <p>
+            R${" "}
+            {accounts
+              .filter((a) => a.translatedStatus === "Paga")
+              .reduce((sum, a) => sum + Number(a.amount), 0)}
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded shadow text-center">
+          <h3 className="font-semibold">Vencidas</h3>
+          <p>
+            R${" "}
+            {accounts
+              .filter((a) => a.translatedStatus === "Vencida")
+              .reduce((sum, a) => sum + Number(a.amount), 0)}
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded shadow text-center">
+          <h3 className="font-semibold">Total</h3>
+          <p>R$ {accounts.reduce((sum, a) => sum + Number(a.amount), 0)}</p>
+        </div>
+      </div>
+
+      {/* Filtros, pesquisa e ordenação */}
+      <div className="mb-6 flex flex-col md:flex-row gap-2 items-center">
+        <input
+          type="text"
+          placeholder="Buscar por descrição"
+          value={searchTerm}
+          onChange={(e) => handleSearch(e.target.value)}
+          className="border rounded px-2 py-1 w-full md:w-1/3"
+        />
+        <div className="flex gap-2 mt-2 md:mt-0">
+          <button
+            onClick={() => handleFilter("all")}
+            className={`px-4 py-2 rounded ${
+              filter === "all" ? "bg-blue-500 text-white" : "bg-gray-300"
+            }`}
+          >
+            Todas
+          </button>
+          <button
+            onClick={() => handleFilter("A Pagar")}
+            className={`px-4 py-2 rounded ${
+              filter === "A Pagar" ? "bg-blue-500 text-white" : "bg-gray-300"
+            }`}
+          >
+            A pagar
+          </button>
+          <button
+            onClick={() => handleFilter("Vencida")}
+            className={`px-4 py-2 rounded ${
+              filter === "Vencida" ? "bg-blue-500 text-white" : "bg-gray-300"
+            }`}
+          >
+            Vencidas
+          </button>
+          <button
+            onClick={() => handleFilter("Paga")}
+            className={`px-4 py-2 rounded ${
+              filter === "Paga" ? "bg-blue-500 text-white" : "bg-gray-300"
+            }`}
+          >
+            Pagas
+          </button>
+        </div>
+        <select
+          value={sortBy}
+          onChange={(e) => handleSort(e.target.value)}
+          className="border rounded px-2 py-1 ml-auto"
+        >
+          <option value="">Ordenar por</option>
+          <option value="valor">Valor</option>
+          <option value="vencimento">Vencimento</option>
+          <option value="status">Status</option>
+        </select>
+      </div>
 
       {/* Inputs inline */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
@@ -182,17 +300,24 @@ export default function Dashboard() {
           if (acc.translatedStatus === "Paga") bgColor = "bg-green-200";
           if (acc.translatedStatus === "Vencida") bgColor = "bg-red-200";
 
+          const today = new Date();
+          const due = new Date(acc.due_date);
+          if (
+            acc.translatedStatus === "A Pagar" &&
+            (due - today) / (1000 * 60 * 60 * 24) <= 2
+          ) {
+            bgColor = "bg-orange-300";
+          }
+
           return (
             <div key={acc.id} className={`${bgColor} p-4 rounded-lg shadow`}>
               <h3 className="font-bold">{acc.description}</h3>
               <p>Valor: R$ {acc.amount}</p>
-              <p>
-                Vencimento: {new Date(acc.due_date).toLocaleDateString("pt-BR")}
-              </p>
+              <p>Vencimento: {due.toLocaleDateString("pt-BR")}</p>
               <p>Status: {acc.translatedStatus}</p>
               {acc.translatedStatus === "A Pagar" && (
                 <button
-                  onClick={() => payAccount(acc.id)}
+                  onClick={() => setModalAccount(acc)}
                   className="mt-2 bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
                 >
                   Marcar como paga
@@ -202,6 +327,33 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      {/* Modal de confirmação */}
+      {modalAccount && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded shadow-lg w-80">
+            <h2 className="text-lg font-bold mb-4">Confirmar pagamento</h2>
+            <p>
+              Deseja marcar <strong>{modalAccount.description}</strong> como
+              paga?
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setModalAccount(null)}
+                className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => payAccount(modalAccount.id)}
+                className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
