@@ -263,27 +263,45 @@ export default function Dashboard() {
       {/* Inputs inline */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
         <h2 className="text-xl font-semibold mb-4">Adicionar nova conta</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <input
-            type="text"
-            placeholder="Descrição"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="border rounded px-2 py-1"
-          />
-          <input
-            type="number"
-            placeholder="Valor"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="border rounded px-2 py-1"
-          />
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="border rounded px-2 py-1"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          {/* Input de descrição */}
+          <div className="flex flex-col">
+            <span className="text-md text-gray-800 mb-1">Descrição:</span>
+            <input
+              type="text"
+              placeholder="Descrição"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="border rounded px-2 py-1"
+            />
+          </div>
+
+          {/* Input de valor */}
+          <div className="flex flex-col">
+            <span className="text-md text-gray-800 mb-1">Valor:</span>
+            <input
+              type="number"
+              placeholder="Valor"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="border rounded px-2 py-1"
+            />
+          </div>
+
+          {/* Input de data */}
+          <div className="flex flex-col">
+            <span className="text-md text-gray-800 mb-1">
+              Data de vencimento:
+            </span>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="border rounded px-2 py-1"
+            />
+          </div>
+
+          {/* Botão */}
           <button
             onClick={addAccountInline}
             className="bg-green-500 text-white rounded px-4 py-2 hover:bg-green-600"
