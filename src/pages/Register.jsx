@@ -9,11 +9,14 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const handleRegister = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/register", {
-        name,
-        email,
-        password,
-      });
+      const res = await axios.post(
+        "https://backendtcc-production-b1b7.up.railway.app/api/auth/register",
+        {
+          name,
+          email,
+          password,
+        }
+      );
       console.log(res.data); // usuário cadastrado
       alert("Cadastro realizado com sucesso!");
     } catch (err) {

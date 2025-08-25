@@ -8,7 +8,7 @@ export default function ForgotPassword() {
   const handleForgotPassword = async () => {
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/auth/forgot-password",
+        "https://backendtcc-production-b1b7.up.railway.app/api/auth/forgot-password",
         {
           email,
         }

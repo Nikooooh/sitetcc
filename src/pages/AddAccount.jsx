@@ -12,7 +12,7 @@ export default function AddAccount() {
   const handleAddAccount = async () => {
     try {
       await axios.post(
-        "http://localhost:5000/api/accounts",
+        "https://backendtcc-production-b1b7.up.railway.app/api/accounts",
         { description, amount, due_date: dueDate },
         {
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },

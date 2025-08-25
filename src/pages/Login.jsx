@@ -18,10 +18,13 @@ export default function Login() {
 
   const handleLogin = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/api/auth/login", {
-        email,
-        password,
-      });
+      const res = await axios.post(
+        "https://backendtcc-production-b1b7.up.railway.app/api/auth/login",
+        {
+          email,
+          password,
+        }
+      );
       localStorage.setItem("token", res.data.token); // salvar token JWT
       alert("Login realizado com sucesso!");
       navigate("/dashboard"); // redireciona para dashboard

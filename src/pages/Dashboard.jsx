@@ -19,9 +19,12 @@ export default function Dashboard() {
 
   const fetchAccounts = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/accounts", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get(
+        "https://backendtcc-production-b1b7.up.railway.app/api/accounts",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       setAccounts(res.data);
       setFilteredAccounts(res.data);
     } catch (err) {
@@ -33,7 +36,7 @@ export default function Dashboard() {
   const addAccountInline = async () => {
     try {
       await axios.post(
-        "http://localhost:5000/api/accounts",
+        "https://backendtcc-production-b1b7.up.railway.app/api/accounts",
         { description, amount, due_date: dueDate },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -50,7 +53,7 @@ export default function Dashboard() {
   const payAccount = async (id) => {
     try {
       const res = await axios.put(
-        `http://localhost:5000/api/accounts/${id}/pay`,
+        `https://backendtcc-production-b1b7.up.railway.app/api/accounts/${id}/pay`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
