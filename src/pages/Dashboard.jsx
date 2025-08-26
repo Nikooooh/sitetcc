@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
-
+import Swal from "sweetalert2";
 export default function Dashboard() {
   const [accounts, setAccounts] = useState([]);
   const [filteredAccounts, setFilteredAccounts] = useState([]);
@@ -21,6 +21,21 @@ export default function Dashboard() {
   const logout = () => {
     localStorage.removeItem("token");
     navigate("/login");
+  };
+  // Excluir conta
+  const deleteAccount = async (id) => {
+    try {
+      await axios.delete(
+        `https://backendtcc-production-b1b7.up.railway.app/api/accounts/${id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      // Atualiza a lista no frontend sem precisar recarregar
+      setAccounts((prev) => prev.filter((acc) => acc.id !== id));
+      setFilteredAccounts((prev) => prev.filter((acc) => acc.id !== id));
+    } catch (err) {
+      console.error(err);
+      alert("Erro ao excluir conta");
+    }
   };
 
   // Fetch accounts
@@ -117,6 +132,29 @@ export default function Dashboard() {
     setFilteredAccounts(temp);
   };
 
+  const handleDelete = async (id) => {
+    const result = await Swal.fire({
+      title: "Excluir conta?",
+      text: "Essa ação não pode ser desfeita.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sim, excluir",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await axios.delete(
+          `https://backendtcc-production-b1b7.up.railway.app/api/accounts/${id}`
+        );
+        setAccounts(accounts.filter((acc) => acc.id !== id));
+        Swal.fire("Excluído!", "A conta foi removida.", "success");
+      } catch (error) {
+        console.error("Erro ao excluir conta:", error);
+        Swal.fire("Erro!", "Não foi possível excluir a conta.", "error");
+      }
+    }
+  };
   // Generate PDF
   const generatePDF = () => {
     const doc = new jsPDF();
@@ -320,6 +358,7 @@ export default function Dashboard() {
 
           const today = new Date();
           const due = new Date(acc.due_date);
+
           if (
             acc.translatedStatus === "A Pagar" &&
             (due - today) / (1000 * 60 * 60 * 24) <= 2
@@ -331,16 +370,36 @@ export default function Dashboard() {
             <div key={acc.id} className={`${bgColor} p-4 rounded-lg shadow`}>
               <h3 className="font-bold">{acc.description}</h3>
               <p>Valor: R$ {acc.amount}</p>
-              <p>Vencimento: {due.toLocaleDateString("pt-BR")}</p>
+              <p>
+                Vencimento:{" "}
+                {acc.due_date
+                  ? new Date(acc.due_date).toLocaleDateString("pt-BR", {
+                      timeZone: "UTC",
+                    })
+                  : ""}
+              </p>
               <p>Status: {acc.translatedStatus}</p>
-              {acc.translatedStatus === "A Pagar" && (
+              {(acc.translatedStatus === "A Pagar" ||
+                acc.translatedStatus === "Vencida") && (
                 <button
                   onClick={() => setModalAccount(acc)}
                   className="mt-2 bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
                 >
                   Marcar como paga
                 </button>
-              )}
+              )}{" "}
+              <button
+                onClick={() => {
+                  if (
+                    window.confirm("Tem certeza que deseja excluir esta conta?")
+                  ) {
+                    deleteAccount(acc.id);
+                  }
+                }}
+                className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+              >
+                Excluir
+              </button>
             </div>
           );
         })}
